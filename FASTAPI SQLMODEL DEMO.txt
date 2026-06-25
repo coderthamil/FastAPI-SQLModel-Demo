@@ -1,0 +1,89 @@
+////////////////////////////////////////////////////////
+FASTAPI + SQLMODEL DEMO — TAKEAWAY NOTES
+////////////////////////////////////////////////////////
+
+1️⃣ Project Setup
+- Create folder → `FastAPI-SQLModel-demo`
+- Create `main.py`
+- Terminal:
+    uv init
+    uv add fastapi sqlmodel psycopg2 uvicorn
+
+--------------------------------------------------------
+
+2️⃣ Imports
+- FastAPI → web framework
+- SQLModel → combines SQLAlchemy ORM + Pydantic
+- Session, create_engine, select → DB operations
+- datetime → timestamps
+- typing → Optional, List for schemas
+
+--------------------------------------------------------
+
+3️⃣ ORM Model vs Schema
+- ORM model → `class Note(SQLModel, table=True)`
+    • table=True → maps to DB table
+    • also acts as Pydantic model
+- Schema → `class NoteCreate(SQLModel)`
+    • no table=True → only validates request payloads
+    • acts as contract between client and server
+
+👉 Key idea: table=True is the “main cannon event” that makes a class persist in DB.
+
+--------------------------------------------------------
+
+4️⃣ Schemas
+- NoteCreate → fields required for creating
+- NoteUpdate → optional fields for partial updates
+- NoteRead → fields returned in responses
+
+👉 Schemas define API contracts (input/output).
+👉 ORM model defines actual DB table.
+
+--------------------------------------------------------
+
+5️⃣ Database Setup
+- `engine = create_engine("sqlite:///database.db", echo=True)`
+- `SQLModel.metadata.create_all(engine)` → creates tables
+- `get_session()` → dependency injection for DB session
+
+👉 Always wrap DB access in a session dependency.
+
+--------------------------------------------------------
+
+6️⃣ CRUD Operations
+- Create:
+    • Convert schema → ORM with `.model_validate(payload)`
+    • session.add → stage
+    • session.commit → save
+    • session.refresh → load generated fields
+
+- Read by ID:
+    • session.get(Model, id)
+    • return 404 if not found
+
+- Read all:
+    • session.exec(select(Model)).all()
+
+- Update:
+    • payload.dict(exclude_unset=True) → only update provided fields
+    • setattr(existing, key, value)
+
+- Delete:
+    • session.delete(existing)
+    • session.commit()
+
+👉 `.dict()` is critical:
+    • `.dict()` → full payload
+    • `.dict(exclude_unset=True)` → partial updates
+    • include/exclude → fine control
+
+--------------------------------------------------------
+
+7️⃣ Why SQLModel is Special
+- Dual role: ORM + Pydantic
+- Less boilerplate than SQLAlchemy
+- Perfect fit for FastAPI CRUD APIs
+- Still powered by SQLAlchemy under the hood
+
+////////////////////////////////////////////////////////

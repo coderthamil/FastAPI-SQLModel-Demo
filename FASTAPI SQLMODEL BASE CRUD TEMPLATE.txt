@@ -1,0 +1,166 @@
+# ////////////////////////////////////////////////////////
+# 🚀 FASTAPI + SQLMODEL BASE CRUD TEMPLATE
+# ////////////////////////////////////////////////////////
+
+from fastapi import FastAPI, Depends, HTTPException
+from sqlmodel import SQLModel, Field, Session, create_engine, select
+from uuid import UUID
+from typing import Optional, List
+from datetime import datetime
+
+# ======================================================
+# 1️⃣ ORM MODEL (Database Table)
+# ======================================================
+class <ModelName>(SQLModel, table=True):
+    id: Optional[UUID] = Field(default=None, primary_key=True)
+    field1: str
+    field2: int
+    field3: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+# ======================================================
+# 2️⃣ SCHEMAS (API Contracts)
+# ======================================================
+class <SchemaCreate>(SQLModel):
+    field1: str
+    field2: int
+    field3: str
+
+class <SchemaUpdate>(SQLModel):
+    field1: Optional[str] = None
+    field2: Optional[int] = None
+    field3: Optional[str] = None
+
+class <SchemaRead>(SQLModel):
+    id: UUID
+    field1: str
+    field2: int
+    field3: str
+    created_at: datetime
+
+# ======================================================
+# 3️⃣ FASTAPI APP + DATABASE CONFIG
+# ======================================================
+app = FastAPI(title="Base CRUD Template")
+engine = create_engine("postgresql+psycopg2://user:password@localhost:5432/yourdb", echo=True)
+
+@app.on_event("startup")
+def on_startup():
+    SQLModel.metadata.create_all(engine)
+
+def get_session():
+    with Session(engine) as session:
+        yield session
+
+# ======================================================
+# 4️⃣ CRUD ROUTES
+# ======================================================
+
+# 🔹 CREATE
+@app.post("/<endpointname>", response_model=<SchemaRead>)
+def create_<object>(payload: <SchemaCreate>, session: Session = Depends(get_session)):
+    object = <ModelName>.model_validate(payload)   # Schema → ORM model
+    session.add(object)
+    try:
+        session.commit()
+        session.refresh(object)
+    except Exception:
+        session.rollback()
+        raise HTTPException(status_code=400, detail="Integrity error")
+    return object
+
+# 🔹 READ BY ID
+@app.get("/<endpointname>/{id}", response_model=<SchemaRead>)
+def get_<object>(id: UUID, session: Session = Depends(get_session)):
+    existing = session.get(<ModelName>, id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="<object> not found")
+    return existing
+
+# 🔹 READ ALL
+@app.get("/<endpointname>", response_model=List[<SchemaRead>])
+def get_all_<object>s(session: Session = Depends(get_session)):
+    records = session.exec(select(<ModelName>)).all()
+    return records
+
+# 🔹 UPDATE
+@app.put("/<endpointname>/{id}", response_model=<SchemaRead>)
+def update_<object>(id: UUID, payload: <SchemaUpdate>, session: Session = Depends(get_session)):
+    existing = session.get(<ModelName>, id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="<object> not found")
+
+    for key, value in payload.dict(exclude_unset=True).items():
+        setattr(existing, key, value)
+
+    session.add(existing)
+    session.commit()
+    session.refresh(existing)
+    return existing
+
+# 🔹 DELETE
+@app.delete("/<endpointname>/{id}")
+def delete_<object>(id: UUID, session: Session = Depends(get_session)):
+    existing = session.get(<ModelName>, id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="<object> not found")
+
+    session.delete(existing)
+    session.commit()
+    return {"detail": "<object> deleted successfully"}
+
+
+
+What .dict() Does
+Converts a Pydantic/SQLModel object into a Python dictionary.
+
+Useful when you need to:
+
+Pass schema data into an ORM model (Note(**payload.dict())).
+
+Update only certain fields (payload.dict(exclude_unset=True)).
+
+Serialize objects for logging or debugging.
+@app.post("/students")
+def create_student(payload: StudentCreate, session: Session = Depends(get_session)):
+    student = Student(**payload.dict())   # unpack dict into ORM model
+    session.add(student)
+    session.commit()
+    session.refresh(student)
+    return student
+
+Here, .dict() turns payload into:
+
+python
+{"name": "Alice", "age": 20, "email": "alice@example.com"}
+
+
+
+
+. Update (Partial Updates)
+python
+@app.put("/students/{id}")
+def update_student(id: UUID, payload: StudentUpdate, session: Session = Depends(get_session)):
+    student = session.get(Student, id)
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # Only update fields provided in request
+    for key, value in payload.dict(exclude_unset=True).items():
+        setattr(student, key, value)
+
+    session.add(student)
+    session.commit()
+    session.refresh(student)
+    return student
+exclude_unset=True → ignores fields not sent in the request.
+
+Example: if you send only {"age": 21}, then only age is updated.
+
+.dict() is the bridge between schemas and ORM models.
+
+Use payload.dict() for create.
+
+Use payload.dict(exclude_unset=True) for update.
+
+Use include/exclude for fine‑grained control.
