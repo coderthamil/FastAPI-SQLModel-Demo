@@ -1,6 +1,7 @@
 
 FASTAPI-SQLMODEL DEMO — README NOTES
 
+<img width="1749" height="4005" alt="api-doc" src="https://github.com/user-attachments/assets/43defd76-bd45-4c7c-86b8-eb979eaf6072" />
 
 # FastAPI-SQLModel Demo
 
@@ -43,6 +44,7 @@ FastAPI-SQLModel-demo/
 3. Open API docs:
    • Swagger UI → http://127.0.0.1:8000/docs
    • ReDoc → http://127.0.0.1:8000/redoc
+<img width="603" height="823" alt="output" src="https://github.com/user-attachments/assets/cdcf10c3-bd64-4b2f-93d0-f652ccd941f2" />
 
 --------------------------------------------------------
 📑 Key Concepts
